@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3client"
+	"github.com/Jabberwocky238/go-pop3/pop3client"
 )
 
 // silentServer accepts one connection, sends a greeting, then reads commands

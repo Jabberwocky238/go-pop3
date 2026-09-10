@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 // mockSessionUTF8 extends mockSession with the UTF8 extension so the tests

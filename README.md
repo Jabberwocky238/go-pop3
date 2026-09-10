@@ -1,5 +1,54 @@
 # go-pop3
 
+A performance-focused fork of [migadu/go-pop3](https://github.com/migadu/go-pop3),
+maintained as the independent Go module `github.com/Jabberwocky238/go-pop3`.
+Use `main` for this fork; `pr` contains only the performance patch intended for upstream
+in [PR #3](https://github.com/migadu/go-pop3/pull/3).
+
+## Changes in this fork
+
+The POP3 body writer batches unchanged spans across ordinary CRLF lines instead
+of issuing a write for every byte. It stops at bare LF or line-leading dots so
+CRLF normalization and dot-stuffing still apply across fragmented writes.
+Writer-owned scratch storage replaces escaping single-byte slices for inserted
+bytes, and partial/short downstream writes are propagated. Message bodies remain
+streamed with bounded buffers; no whole-message buffering is introduced.
+
+On an Apple M4, macOS arm64, Go 1.25.3, the isolated 2 GiB writer benchmark improved
+from **16.840 s to 0.248 s** (three-run medians), approximately **67.8× throughput**.
+Allocations fell from approximately **2.15 billion/op to 6/op**, and allocated
+memory from approximately **2 GiB/op to 4,248 B/op**.
+
+| Isolated writer | Run 1 (s) | Run 2 (s) | Run 3 (s) | Median (s) |
+| --- | ---: | ---: | ---: | ---: |
+| Upstream `8794dc8d9e68` | 16.839746 | 16.708265 | 16.887655 | 16.839746 |
+| Performance patch `cbaefcdb4447` | 0.260682 | 0.247973 | 0.248280 | 0.248280 |
+
+The benchmark is [BenchmarkDotStuffWriter in pop3server/dotstuff_bulk_test.go](pop3server/dotstuff_bulk_test.go).
+It streams exactly 2 GiB from a repeated block of 76 ASCII `x` bytes plus CRLF,
+through a 128 KiB copy buffer and the body writer into a default 4 KiB buffered
+discard sink. Fixture and copy-buffer allocation are outside the timer; writer
+construction, copying, Close and Flush are timed. The same benchmark was run
+sequentially on both revisions without CPU profiling or race instrumentation.
+
+```sh
+go test ./pop3server -run '^$' -bench '^BenchmarkDotStuffWriter$' -benchtime=1x -count=3
+```
+
+This measures body transformation only, excluding sockets, TLS, storage, MIME
+parsing and Base64 conversion. It checks byte count and errors, while separate
+unit/fuzz tests cover protocol content and boundaries. Three samples do not
+establish a confidence interval or a production SLA.
+
+In a separate embedding-server test using native local Fals3y, POP3 RETR of a
+2 GiB decoded attachment (2,938,662,361 MIME bytes) improved from **30.077 s to
+1.790 s** after the writer fix. Those were single end-to-end runs with streamed
+TLS downloads and content-hash verification, not the 67.8× isolated benchmark.
+
+The performance commit passed unit/race tests, fragmented-write fuzzing, and the
+embedding server's integration suite. This fork retains the upstream MIT license
+and attribution. Public packages are now imported through this fork's module path.
+
 A dependency-free POP3 server library for Go, with a matching minimal client
 for proxy front-ends. You implement a single `Session` interface for storage and
 authentication; the library handles the wire protocol, the RFC 1939 state
@@ -19,7 +68,7 @@ machine, dot-stuffing, TLS/STLS, timeouts, and abuse limits.
 ## Install
 
 ```sh
-go get github.com/migadu/go-pop3
+go get github.com/Jabberwocky238/go-pop3@main
 ```
 
 Requires Go 1.25 or newer.
@@ -41,8 +90,8 @@ package main
 import (
 	"log"
 
-	"github.com/migadu/go-pop3/pop3mem"
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3mem"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 func main() {

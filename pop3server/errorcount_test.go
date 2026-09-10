@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 // drainForTooMany reads until the connection closes, reporting whether the

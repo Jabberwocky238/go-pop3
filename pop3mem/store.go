@@ -27,8 +27,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/migadu/go-pop3/pop3"
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 // Message is a stored message: a server-assigned unique id and the raw bytes

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3"
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 // A failed PASS keeps the username, so a client may retry with a bare PASS

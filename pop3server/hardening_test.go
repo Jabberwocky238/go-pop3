@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 // serve starts a server with the given options on a random port and returns

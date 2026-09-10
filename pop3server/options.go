@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3"
+	"github.com/Jabberwocky238/go-pop3/pop3"
 )
 
 // defaultMaxErrorDelay caps the progressive per-error back-off when

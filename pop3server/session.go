@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/migadu/go-pop3/pop3"
+	"github.com/Jabberwocky238/go-pop3/pop3"
 )
 
 // Session is a POP3 session for a single client connection.

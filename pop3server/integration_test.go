@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/migadu/go-pop3/pop3"
-	"github.com/migadu/go-pop3/pop3server"
+	"github.com/Jabberwocky238/go-pop3/pop3"
+	"github.com/Jabberwocky238/go-pop3/pop3server"
 )
 
 // mockSession is a minimal session implementation for integration tests.

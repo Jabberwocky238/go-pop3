@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/migadu/go-pop3/pop3"
+	"github.com/Jabberwocky238/go-pop3/pop3"
 )
 
 // Stat issues STAT and returns the message count and total maildrop size.
