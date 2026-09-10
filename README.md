@@ -65,10 +65,45 @@ machine, dot-stuffing, TLS/STLS, timeouts, and abuse limits.
 - Proxy-friendly — `Conn.Hijack()` and the `pop3client` package let a session
   authenticate upstream and relay raw bytes.
 
+### Measured CPU and memory
+
+A follow-up single POP3S RETR using this fork's **v0.1.5** downloaded a 2 GiB decoded
+attachment (2,938,662,361 MIME bytes) in **1.862 s**, using **1.65 CPU seconds**
+for the embedding server process: **88.62% of one logical core on average**.
+Sampled peak RSS was **139.875 MiB**, starting from
+139.828 MiB, a **48 KiB** sampled increase during RETR.
+The run passed content-hash checks and the application's 256 MiB RSS ceiling.
+
+Measured on Apple M4, macOS arm64, Go 1.25.3, native local Fals3y, without profiling
+or race instrumentation. RETR includes S3/gzip reads, dot-stuffing and TLS output;
+connection setup, TLS handshake and login happened before timing. CPU is summed
+across all server threads; 100% means one core, not the whole machine.
+
+RSS was sampled every 50 ms and includes the complete embedding process, runtime,
+TLS and storage buffers, including memory retained by earlier phases. It is not
+the library's exclusive heap size; short peaks may be missed. RSS growth is not
+allocation traffic. The 4,248 B/op microbenchmark result above measures allocations,
+not RSS. Concurrent RETR resource usage has not been measured.
+
+For the same 2 GiB attachment size, the earlier pre-fix run used **32.96 CPU seconds**
+in 30.077 s (109.59% of one logical core). The first fixed run used **1.58 CPU seconds**
+in 1.790 s (88.27%); the new direct-module run used **1.65 CPU seconds** in 1.862 s
+(88.62%). Thus the fix uses about **95% less CPU time** than the historical pre-fix
+record. Average utilization differs by only 0.35 percentage points between the
+two fixed runs. These are single historical samples, not a repeated controlled
+A/B experiment; the 4.4% CPU-time difference does not establish a regression.
+Process/GC history and other application changes also prevent attributing all RSS
+differences to the writer. CPU time per decoded GiB is 16.48 s before the fix,
+0.79 s in the first fixed run, and 0.825 s in the new run.
+
+See [upstream PR #3](https://github.com/migadu/go-pop3/pull/3) for raw counters,
+resource analysis, methodology and the embedding harness command. The standalone
+writer benchmark remains in `pop3server/dotstuff_bulk_test.go`.
+
 ## Install
 
 ```sh
-go get github.com/Jabberwocky238/go-pop3@main
+go get github.com/Jabberwocky238/go-pop3@v0.1.5
 ```
 
 Requires Go 1.25 or newer.
