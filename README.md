@@ -24,6 +24,35 @@ memory from approximately **2 GiB/op to 4,248 B/op**.
 | Upstream `8794dc8d9e68` | 16.839746 | 16.708265 | 16.887655 | 16.839746 |
 | Performance patch `cbaefcdb4447` | 0.260682 | 0.247973 | 0.248280 | 0.248280 |
 
+### Additional ARM64 acceleration
+
+The follow-up validator checks 16 bytes at a time with ARM64 NEON, preserving
+bounded input reads and the scalar handling of bare LF, leading dots and errors.
+An exceptional block disables further vector scans within that Write; newline-free
+spans retain the standard-library search. Other architectures use the portable
+bulk scanner. No new buffer, heap allocation, dependency or exported API is added.
+
+On the same M4 / Go 1.25.3, a sequential matched-build comparison (three samples,
+five 2 GiB operations each) measured **0.267945 s with `-tags=pop3scalar` versus
+0.131334 s with the vector path: another 2.04x throughput**. Both medians remain
+**4,248 B/op and 6 allocs/op**. Relative to the historical upstream 16.839746 s
+median, this is approximately **128x on this ARM64 host**; that is not a claim
+about other CPUs or end-to-end downloads.
+
+`BenchmarkDotStuffWriterShapes` in the same test file additionally covers ordinary
+CRLF, bare LF, leading dots and newline-free bodies. The latter three shapes
+remain approximately unchanged after the adaptive fallback was added.
+
+```sh
+go test -tags=pop3scalar ./pop3server -run '^$' -bench '^BenchmarkDotStuffWriter($|Shapes)' -benchtime=5x -count=3
+go test ./pop3server -run '^$' -bench '^BenchmarkDotStuffWriter($|Shapes)' -benchtime=5x -count=3
+```
+
+`pop3scalar` changes only the POP3 scanner. `purego` is also supported, but it can
+turn off acceleration in TLS and other dependencies, so it is not an appropriate
+end-to-end A/B switch. Tests include every byte value around vector and Write
+boundaries, fragmented-input fuzzing, race tests and a Linux amd64 cross-build.
+
 The benchmark is [BenchmarkDotStuffWriter in pop3server/dotstuff_bulk_test.go](pop3server/dotstuff_bulk_test.go).
 It streams exactly 2 GiB from a repeated block of 76 ASCII `x` bytes plus CRLF,
 through a 128 KiB copy buffer and the body writer into a default 4 KiB buffered
@@ -65,7 +94,35 @@ machine, dot-stuffing, TLS/STLS, timeouts, and abuse limits.
 - Proxy-friendly — `Conn.Hijack()` and the `pop3client` package let a session
   authenticate upstream and relay raw bytes.
 
-### Measured CPU and memory
+
+### POP3 resources with the updated storage binary
+
+All rows transfer the same 2 GiB decoded size / 2,938,662,361 MIME bytes.
+The first four runs use regenerated low-compressibility fixtures and were run
+sequentially in scalar/vector/scalar/vector order; the last uses compressible data.
+The POP3-only `pop3scalar` tag leaves TLS and storage dependencies unchanged.
+All five complete runs passed their hashes, protocol checks and 256 MiB server
+RSS ceiling. The scalar/vector sources differ only by the scanner build tag.
+
+| Run | RETR wall (s) | Server CPU (s) | Average CPU (one core = 100%) | Initial RSS (MiB) | Peak RSS (MiB) | Sampled increase (KiB) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| scalar-1 | 2.055 | 1.780 | 86.60% | 131.109 | 131.141 | 32 |
+| vector-1 | 1.849 | 1.560 | 84.36% | 71.359 | 71.719 | 368 |
+| scalar-2 | 1.866 | 1.660 | 88.95% | 37.109 | 37.547 | 448 |
+| vector-2 | 2.269 | 1.770 | 78.02% | 56.703 | 57.031 | 336 |
+| compressible | 2.205 | 2.280 | 103.38% | 103.297 | 103.312 | 16 |
+
+**These end-to-end results do not establish a download speedup.** The second
+vector run is slower than its scalar counterpart. The isolated 2.04x encoding
+gain remains valid, but does not remove network/storage work or guarantee lower
+whole-process CPU in every run. Two samples per variant are insufficient for a
+statistical regression claim. RSS includes memory retained by earlier phases;
+the large differences in starting RSS cannot be attributed to this scanner.
+No new buffer is allocated by the vector implementation.
+CPU is summed user+system time across all server threads; RSS is sampled every
+50 ms. The separate Fals3y and benchmark-client processes are excluded.
+
+### Historical v0.1.5 CPU and memory
 
 A follow-up single POP3S RETR using this fork's **v0.1.5** downloaded a 2 GiB decoded
 attachment (2,938,662,361 MIME bytes) in **1.862 s**, using **1.65 CPU seconds**
@@ -103,7 +160,7 @@ writer benchmark remains in `pop3server/dotstuff_bulk_test.go`.
 ## Install
 
 ```sh
-go get github.com/Jabberwocky238/go-pop3@v0.1.5
+go get github.com/Jabberwocky238/go-pop3@v0.1.6
 ```
 
 Requires Go 1.25 or newer.
