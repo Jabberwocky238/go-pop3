@@ -95,7 +95,38 @@ machine, dot-stuffing, TLS/STLS, timeouts, and abuse limits.
   authenticate upstream and relay raw bytes.
 
 
-### POP3 resources with the updated storage binary
+## Shared-file storage retest (2026-09-10 UTC)
+
+The application directly used github.com/Jabberwocky238/go-pop3 **v0.1.6** with
+native Fals3y **0.3.1-dev.b8e48bf**, source b8e48bfb7fc05fcaec6e21326b4ea34ec5dfa3a6,
+Go 1.26.0; email server Go 1.25.3, Apple M4/macOS arm64. Storage SHA-256:
+1298e405c1631fbded92892eadc7252d8e2e319dfdf42f48c188ae3fd82ffb4b.
+
+| Mode | Recording interval UTC on September 10 | RETR wall (s) | Server CPU (s) | Average one-core CPU | Initial / peak RSS (bytes) | Sampled growth (bytes) |
+| --- | --- | ---: | ---: | ---: | --- | ---: |
+| vector | 18:28:43.159Z–18:29:21.519Z | 1.893 | 1.550 | 81.90% | 182108160 / 182108160 | 0 |
+| scalar | 18:29:21.680Z–18:30:01.383Z | 1.848 | 1.630 | 88.22% | 173441024 / 173457408 | 16384 |
+| compressible | 18:30:01.502Z–18:30:44.570Z | 2.274 | 2.350 | 103.36% | 106987520 / 107003904 | 16384 |
+
+Intervals are log creation-to-last-write metadata, covering the full harness;
+exact per-RETR UTC instants were not recorded. Timed RETR excludes TLS setup/login
+and QUIT, transfers 2,938,662,361 MIME bytes for a 2 GiB decoded attachment, and
+checks content hashes and the terminator. Runs were sequential, with identical
+application/module/harness hashes and an unchanged storage executable. The scalar
+control selects only pop3scalar; the third run uses compressible input.
+All runs passed the 256 MiB server RSS ceiling and complete protocol/hash checks.
+CPU sums email-server threads, excluding Fals3y/client; RSS is sampled every 50 ms
+and includes memory retained from previous phases. Zero growth is not zero allocation.
+
+Vector used 4.9% less CPU time but 2.4% more wall time than the portable control
+in this single pair. It does not establish a stable full-download improvement.
+The earlier 2.04x isolated encoding result remains separate from storage/TLS.
+No runtime change was needed for this retest. Durable old/new comparison tables,
+versions, UTC provenance, source links and optimization decisions are maintained
+in the embedding project's PERFORMANCE.md; embedded code and logs were replaced
+there by result tables without dropping original table rows or exact benchmark samples.
+
+### POP3 resources with the previous storage binary
 
 All rows transfer the same 2 GiB decoded size / 2,938,662,361 MIME bytes.
 The first four runs use regenerated low-compressibility fixtures and were run
