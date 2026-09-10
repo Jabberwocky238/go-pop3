@@ -47,12 +47,23 @@ func newDotStuffWriter(w io.Writer) *dotStuffWriter {
 // been written — so the io.Writer contract (n < len(p) implies a non-nil
 // error) holds.
 func (d *dotStuffWriter) Write(p []byte) (int, error) {
+	vectorScan := true
 	for i := 0; i < len(p); {
 		b := p[i]
 		// Normal CRLF data can pass through unchanged, including multiple
 		// lines. Stop only at a bare LF or a dot needing an extra byte.
 		if b != '\n' && !(d.atLineStart && b == '.') {
 			end := i
+			// Skip validated vector blocks where supported; preserve the
+			// scalar handling of the first byte and all exceptional data.
+			if vectorScan && len(p)-i >= 32 {
+				skipped := ordinaryPrefix(p[i:])
+				// Once a block contains exceptional data, use the scalar
+				// scanner for the rest of this Write. Repeated bare LFs or
+				// leading dots should not pay for two scans of every line.
+				vectorScan = skipped >= len(p)-i-16
+				end += skipped
+			}
 			for end < len(p) {
 				newline := bytes.IndexByte(p[end:], '\n')
 				if newline < 0 {
